@@ -11,7 +11,7 @@ TOKEN = os.getenv("BOT_TOKEN")
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
-ADMINS = [1692196373]  # твой ID
+ADMINS = [1692196373]
 
 # ================= DB =================
 
@@ -47,8 +47,7 @@ PRODUCTS = {
     "4500": 3019, "10000": 6379, "22500": 14750
 }
 
-user_state = {}  # FSM-lite (user -> product)
-
+user_state = {}
 
 # ================= HELPERS =================
 
@@ -56,12 +55,6 @@ def balance_get(uid):
     cur.execute("SELECT balance FROM balances WHERE user_id=?", (uid,))
     r = cur.fetchone()
     return r[0] if r else 0
-
-
-def balance_add(uid, amount):
-    cur.execute("INSERT OR IGNORE INTO balances VALUES (?, 0)", (uid,))
-    cur.execute("UPDATE balances SET balance = balance + ? WHERE user_id=?", (amount, uid))
-    db.commit()
 
 
 def order_create(uid, nick, item, price):
@@ -87,7 +80,6 @@ def order_get_all():
     cur.execute("SELECT id,user_id,item,status FROM orders")
     return cur.fetchall()
 
-
 # ================= UI =================
 
 def menu():
@@ -105,13 +97,11 @@ def back():
         [InlineKeyboardButton(text="⬅️ Назад", callback_data="back")]
     ])
 
-
 # ================= START =================
 
 @dp.message(Command("start"))
 async def start(m: types.Message):
-    await m.answer("🏪 ULTRA PRO SHOP\nДобро пожаловать 💚", reply_markup=menu())
-
+    await m.answer("🏪 FogBuy Shop\nДобро пожаловать 💚", reply_markup=menu())
 
 # ================= SHOP =================
 
@@ -121,13 +111,13 @@ async def shop(c: types.CallbackQuery):
         [InlineKeyboardButton(text="40 — 79₽", callback_data="p_40"),
          InlineKeyboardButton(text="80 — 109₽", callback_data="p_80")],
 
-        [InlineKeyboardButton(text="240 — 249₽", callback_data="p_200"),
-         InlineKeyboardButton(text="500 — 359₽", callback_data="p_400")],
+        [InlineKeyboardButton(text="200 — 249₽", callback_data="p_200"),
+         InlineKeyboardButton(text="400 — 359₽", callback_data="p_400")],
 
         [InlineKeyboardButton(text="800 — 599₽", callback_data="p_800"),
          InlineKeyboardButton(text="1000 — 659₽", callback_data="p_1000")],
 
-        [InlineKeyboardButton(text="1240 — 899₽", callback_data="p_1200"),
+        [InlineKeyboardButton(text="1200 — 899₽", callback_data="p_1200"),
          InlineKeyboardButton(text="1700 — 1199₽", callback_data="p_1700")],
 
         [InlineKeyboardButton(text="2000 — 1319₽", callback_data="p_2000"),
@@ -140,8 +130,7 @@ async def shop(c: types.CallbackQuery):
         [InlineKeyboardButton(text="⬅️ Назад", callback_data="back")]
     ])
 
-    await c.message.edit_text("🛒 Выберите товар:", reply_markup=kb)
-
+    await c.message.edit_text("🛒 FogBuy — выберите пакет:", reply_markup=kb)
 
 # ================= PRODUCT =================
 
@@ -150,10 +139,9 @@ async def product(c: types.CallbackQuery):
     code = c.data.split("_")[1]
     user_state[c.from_user.id] = code
 
-    await c.message.edit_text(f"📦 {code} R$\n\n👤 Введите игровой ник:")
+    await c.message.edit_text(f"📦 {code} R$\n\n👤 Введите игровой ник (ТОЧНЫЙ):")
 
-
-# ================= NICK (FSM SAFE) =================
+# ================= NICK =================
 
 @dp.message()
 async def nick(m: types.Message):
@@ -173,13 +161,13 @@ async def nick(m: types.Message):
     ])
 
     await m.answer(
-        f"📦 Заказ #{oid}\n"
+        f"📦 FogBuy заказ #{oid}\n"
         f"🎮 Ник: {m.text}\n"
         f"💰 {price}₽\n\n"
-        "💳 СБП: 2202 2068 1662 4501",
+        "💳 СБП: 2202 2068 1662 4501\n"
+        "⏳ После оплаты нажмите кнопку",
         reply_markup=kb
     )
-
 
 # ================= PAID =================
 
@@ -190,11 +178,9 @@ async def paid(c: types.CallbackQuery):
     order_update(oid, "🟡 На проверке")
 
     await c.message.edit_text(
-        f"📦 Заказ #{oid}\n"
-        "⏳ Ожидайте проверки\n"
-        "📦 Статус можно смотреть в заказах"
+        f"📦 FogBuy заказ #{oid}\n"
+        "⏳ Ожидайте проверки"
     )
-
 
 # ================= ORDERS =================
 
@@ -203,99 +189,40 @@ async def orders(c: types.CallbackQuery):
     data = order_get_user(c.from_user.id)
 
     if not data:
-        await c.message.edit_text("📦 Нет заказов", reply_markup=back())
+        await c.message.edit_text("📦 FogBuy — нет заказов", reply_markup=back())
         return
 
     text = "\n".join([f"#{i} | {item} | {status}" for i, item, status in data])
     await c.message.edit_text(text, reply_markup=back())
 
-
 # ================= BALANCE =================
 
 @dp.callback_query(F.data == "balance")
 async def balance(c: types.CallbackQuery):
-    await c.message.edit_text(
-        f"💰 Баланс: {balance_get(c.from_user.id)}₽",
-        reply_markup=back()
-    )
-
+    await c.message.edit_text(f"💰 FogBuy баланс: {balance_get(c.from_user.id)}₽", reply_markup=back())
 
 # ================= INFO =================
 
 @dp.callback_query(F.data == "info")
 async def info(c: types.CallbackQuery):
-    await c.message.edit_text("ℹ️ ULTRA PRO SHOP", reply_markup=back())
-
+    await c.message.edit_text("ℹ️ FogBuy Shop — лучший магазин робуксов 💚", reply_markup=back())
 
 # ================= TICKETS =================
 
 @dp.callback_query(F.data == "tickets")
 async def tickets(c: types.CallbackQuery):
-    await c.message.edit_text("🎫 Тикеты: в разработке", reply_markup=back())
-
-
-# ================= ADMIN PANEL =================
-
-@dp.callback_query(F.data == "admin")
-async def admin(c: types.CallbackQuery):
-    if c.from_user.id not in ADMINS:
-        return
-
-    data = order_get_all()
-
-    text = "🛠 ADMIN PANEL\n\n"
-    kb = []
-
-    for oid, uid, item, status in data:
-        text += f"#{oid} | {uid} | {item} | {status}\n"
-
-        kb.append([
-            InlineKeyboardButton("🟡", callback_data=f"st_y_{oid}"),
-            InlineKeyboardButton("🔵", callback_data=f"st_b_{oid}"),
-            InlineKeyboardButton("🟢", callback_data=f"st_g_{oid}")
-        ])
-
-    await c.message.edit_text(text or "Нет заказов", reply_markup=InlineKeyboardMarkup(inline_keyboard=kb))
-
-
-# ================= STATUS + NOTIFY =================
-
-@dp.callback_query(F.data.startswith("st_"))
-async def status(c: types.CallbackQuery):
-    if c.from_user.id not in ADMINS:
-        return
-
-    _, color, oid = c.data.split("_")
-    oid = int(oid)
-
-    if color == "y":
-        order_update(oid, "🟡 На проверке")
-
-    elif color == "b":
-        order_update(oid, "🔵 В работе")
-
-    elif color == "g":
-        order_update(oid, "🟢 Выполнен")
-
-        cur.execute("SELECT user_id FROM orders WHERE id=?", (oid,))
-        uid = cur.fetchone()[0]
-
-        await bot.send_message(uid, f"🎉 Заказ #{oid} выполнен!")
-
-    await c.answer("OK")
-
+    await c.message.edit_text("🎫 FogBuy тикеты: в разработке", reply_markup=back())
 
 # ================= BACK =================
 
 @dp.callback_query(F.data == "back")
-async def back(c: types.CallbackQuery):
-    await c.message.edit_text("🏪 ULTRA PRO SHOP", reply_markup=menu())
-
+async def back_handler(c: types.CallbackQuery):
+    await c.message.edit_text("🏪 FogBuy Shop", reply_markup=menu())
 
 # ================= RUN =================
 
 async def main():
-    print("ULTRA PRO 2 STARTED")
+    print("FOGBUY BOT STARTED")
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
