@@ -13,9 +13,10 @@ dp = Dispatcher()
 
 orders = {}
 temp = {}
+balances = {}
 order_id = 1
 
-ADMINS = [1692196373]  # 👈 ВСТАВЬ СВОЙ TG ID
+ADMINS = [1692196373]  # <-- твой ID
 
 # ---------------- PRODUCTS ----------------
 
@@ -42,6 +43,7 @@ def main_menu():
         [InlineKeyboardButton(text="🛒 Купить Robux", callback_data="shop")],
         [InlineKeyboardButton(text="📦 Мои покупки", callback_data="orders")],
         [InlineKeyboardButton(text="💰 Баланс", callback_data="balance")],
+        [InlineKeyboardButton(text="🎫 Тикеты (скоро)", callback_data="tickets")],
         [InlineKeyboardButton(text="ℹ️ Инфо", callback_data="info")]
     ]
 
@@ -66,27 +68,27 @@ async def start(m: types.Message):
 @dp.callback_query(F.data == "shop")
 async def shop(c: types.CallbackQuery):
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🟢 40 — 79₽", callback_data="p_40"),
-         InlineKeyboardButton(text="🟢 80 — 109₽", callback_data="p_80")],
+        [InlineKeyboardButton("🟢 40 — 79₽", callback_data="p_40"),
+         InlineKeyboardButton("🟢 80 — 109₽", callback_data="p_80")],
 
-        [InlineKeyboardButton(text="🎁 200+40 — 249₽", callback_data="p_200"),
-         InlineKeyboardButton(text="🎁 400+100 — 359₽", callback_data="p_400")],
+        [InlineKeyboardButton("🎁 200+40 — 249₽", callback_data="p_200"),
+         InlineKeyboardButton("🎁 400+100 — 359₽", callback_data="p_400")],
 
-        [InlineKeyboardButton(text="🟡 800 — 599₽", callback_data="p_800"),
-         InlineKeyboardButton(text="🟡 1000 — 659₽", callback_data="p_1000")],
+        [InlineKeyboardButton("🟡 800 — 599₽", callback_data="p_800"),
+         InlineKeyboardButton("🟡 1000 — 659₽", callback_data="p_1000")],
 
-        [InlineKeyboardButton(text="💎 1200+40 — 899₽", callback_data="p_1200"),
-         InlineKeyboardButton(text="🔥 1700 — 1199₽", callback_data="p_1700")],
+        [InlineKeyboardButton("💎 1200+40 — 899₽", callback_data="p_1200"),
+         InlineKeyboardButton("🔥 1700 — 1199₽", callback_data="p_1700")],
 
-        [InlineKeyboardButton(text="🔥 2000 — 1319₽", callback_data="p_2000"),
-         InlineKeyboardButton(text="🚀 2500 — 1679₽", callback_data="p_2500")],
+        [InlineKeyboardButton("🔥 2000 — 1319₽", callback_data="p_2000"),
+         InlineKeyboardButton("🚀 2500 — 1679₽", callback_data="p_2500")],
 
-        [InlineKeyboardButton(text="💎 4500 — 3019₽", callback_data="p_4500"),
-         InlineKeyboardButton(text="👑 10000 — 6379₽", callback_data="p_10000")],
+        [InlineKeyboardButton("💎 4500 — 3019₽", callback_data="p_4500"),
+         InlineKeyboardButton("👑 10000 — 6379₽", callback_data="p_10000")],
 
-        [InlineKeyboardButton(text="👑 22500 — 14750₽", callback_data="p_22500")],
+        [InlineKeyboardButton("👑 22500 — 14750₽", callback_data="p_22500")],
 
-        [InlineKeyboardButton(text="⬅️ Назад", callback_data="back")]
+        [InlineKeyboardButton("⬅️ Назад", callback_data="back")]
     ])
 
     await c.message.edit_text("🛒 Выберите пакет:", reply_markup=kb)
@@ -103,14 +105,14 @@ async def product(c: types.CallbackQuery):
     text = (
         f"📦 {code} R$\n"
         f"💰 {price}₽\n\n"
-        "⚠️ Выдача через аккаунт\n"
-        "⚡ Гарантия\n\n"
+        "⚡ Выдача через аккаунт\n"
+        "🔒 Гарантия\n\n"
         "Нажмите купить"
     )
 
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🛒 Купить", callback_data=f"buy_{code}")],
-        [InlineKeyboardButton(text="⬅️ Назад", callback_data="shop")]
+        [InlineKeyboardButton("🛒 Купить", callback_data=f"buy_{code}")],
+        [InlineKeyboardButton("⬅️ Назад", callback_data="shop")]
     ])
 
     await c.message.edit_text(text, reply_markup=kb)
@@ -144,15 +146,15 @@ async def nick(m: types.Message):
     }
 
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="✅ Я оплатил", callback_data=f"paid_{order_id}")]
+        [InlineKeyboardButton("✅ Я оплатил", callback_data=f"paid_{order_id}")]
     ])
 
     await m.answer(
         f"📦 Заказ #{order_id}\n"
         f"🎮 Ник: {m.text}\n"
         f"🛒 {code} R$ — {price}₽\n\n"
-        "💳 СБП:\n2202 2068 1662 4501\n\n"
-        "После оплаты нажмите кнопку 👇",
+        "💳 СБП: 2202 2068 1662 4501\n\n"
+        "После оплаты нажмите 👇",
         reply_markup=kb
     )
 
@@ -167,7 +169,15 @@ async def paid(c: types.CallbackQuery):
 
     if oid in orders:
         orders[oid]["status"] = "🟡 На проверке"
-        await c.message.edit_text(f"📦 Заказ #{oid}\n🟡 Отправлен на проверку")
+
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton("🏠 В главное меню", callback_data="back")]
+        ])
+
+        await c.message.edit_text(
+            f"📦 Заказ #{oid}\n\n🟡 Ожидайте проверки",
+            reply_markup=kb
+        )
 
 # ---------------- ORDERS ----------------
 
@@ -179,31 +189,51 @@ async def orders_list(c: types.CallbackQuery):
         if o["user"] == c.from_user.id
     ]
 
-    await c.message.edit_text("\n".join(data) if data else "📦 Нет заказов", reply_markup=back_kb)
+    await c.message.edit_text(
+        "\n".join(data) if data else "📦 Нет заказов",
+        reply_markup=back_kb
+    )
 
 # ---------------- BALANCE ----------------
 
 @dp.callback_query(F.data == "balance")
 async def balance(c: types.CallbackQuery):
-    await c.message.edit_text("💰 Баланс: 0₽", reply_markup=back_kb)
+    bal = balances.get(c.from_user.id, 0)
+
+    await c.message.edit_text(
+        f"💰 Баланс: {bal}₽",
+        reply_markup=back_kb
+    )
+
+# ---------------- TICKETS ----------------
+
+@dp.callback_query(F.data == "tickets")
+async def tickets(c: types.CallbackQuery):
+    await c.message.edit_text(
+        "🎫 Тикеты\n\n🚧 СКОРО В РАЗРАБОТКЕ 🚧",
+        reply_markup=back_kb
+    )
 
 # ---------------- INFO ----------------
 
 @dp.callback_query(F.data == "info")
 async def info(c: types.CallbackQuery):
-    await c.message.edit_text("ℹ️ FOGBUY SHOP\nГарантия | Быстро | Надёжно", reply_markup=back_kb)
+    await c.message.edit_text(
+        "ℹ️ FOGBUY SHOP\nГарантия | Быстро | Надёжно",
+        reply_markup=back_kb
+    )
 
 # ---------------- ADMIN ----------------
 
 @dp.callback_query(F.data == "admin")
 async def admin(c: types.CallbackQuery):
     if c.from_user.id not in ADMINS:
-        await c.answer("Нет доступа", show_alert=True)
         return
 
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="📦 Заказы", callback_data="admin_orders")],
-        [InlineKeyboardButton(text="⬅️ Назад", callback_data="back")]
+        [InlineKeyboardButton("📦 Заказы", callback_data="admin_orders")],
+        [InlineKeyboardButton("💰 Выдать деньги", callback_data="give_money")],
+        [InlineKeyboardButton("⬅️ Назад", callback_data="back")]
     ])
 
     await c.message.edit_text("🛠 Админ панель", reply_markup=kb)
@@ -216,8 +246,7 @@ async def admin_orders(c: types.CallbackQuery):
         return
 
     kb = []
-
-    text = "📦 ВСЕ ЗАКАЗЫ:\n\n"
+    text = "📦 ЗАКАЗЫ:\n\n"
 
     for i, o in orders.items():
         text += f"#{i} | {o['nick']} | {o['item']} | {o['status']}\n"
@@ -251,6 +280,31 @@ async def status(c: types.CallbackQuery):
             orders[oid]["status"] = "🟢 Выполнен"
 
     await c.answer("Обновлено")
+
+# ---------------- GIVE MONEY ----------------
+
+@dp.callback_query(F.data == "give_money")
+async def give_money(c: types.CallbackQuery):
+    if c.from_user.id not in ADMINS:
+        return
+
+    await c.message.edit_text("Введите: ID сумма\nПример: 123456 100")
+
+@dp.message()
+async def admin_money(m: types.Message):
+    if m.from_user.id not in ADMINS:
+        return
+
+    try:
+        uid, amount = m.text.split()
+        uid = int(uid)
+        amount = int(amount)
+
+        balances[uid] = balances.get(uid, 0) + amount
+
+        await m.answer(f"✅ Выдано {amount}₽ пользователю {uid}")
+    except:
+        pass
 
 # ---------------- BACK ----------------
 
