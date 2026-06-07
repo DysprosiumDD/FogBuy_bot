@@ -3,7 +3,7 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 import asyncio
 import os
 
-TOKEN = os.getenv("BOT_TOKEN")
+TOKEN = os.getenv("8826614385:AAFy0huYkuyJ7NrzjgCeR8JZ8Y9ciGVzOFk")
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
