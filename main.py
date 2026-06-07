@@ -3,12 +3,12 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 import asyncio
 import os
 
-TOKEN = os.getenv("8826614385:AAFy0huYkuyJ7NrzjgCeR8JZ8Y9ciGVzOFk")
+TOKEN = os.getenv("BOT_TOKEN")
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
-# ---------------- MAIN MENU ----------------
+# ---------------- MENU ----------------
 
 def main_menu():
     return InlineKeyboardMarkup(inline_keyboard=[
@@ -42,9 +42,8 @@ async def shop(call: types.CallbackQuery):
     ])
 
     await call.message.edit_text(
-        "🛒 *Магазин Robux*\n\nВыберите товар 👇",
-        reply_markup=kb,
-        parse_mode="Markdown"
+        "🛒 Магазин Robux\n\nВыберите товар 👇",
+        reply_markup=kb
     )
 
 # ---------------- BUY ----------------
@@ -59,7 +58,7 @@ async def buy(call: types.CallbackQuery):
         "⏳ После проверки заказ будет создан"
     )
 
-# ---------------- OTHER BUTTONS ----------------
+# ---------------- OTHER ----------------
 
 @dp.callback_query(F.data == "orders")
 async def orders(call: types.CallbackQuery):
