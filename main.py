@@ -1,220 +1,204 @@
 import asyncio
 import os
+import aiosqlite
 
-from aiogram import Bot, Dispatcher, types, F
+from aiogram import Bot, Dispatcher, F, types
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 TOKEN = os.getenv("BOT_TOKEN")
-
-bot = Bot(token=TOKEN)
+bot = Bot(TOKEN)
 dp = Dispatcher()
 
-# ---------------- DATA ----------------
+ADMINS = [1692196373]
 
-orders = {}
-temp = {}
-order_id = 1
+# ---------------- DB ----------------
 
-ADMINS = [1692196373]  
+DB = "bot.db"
 
-# ---------------- STATUS COLORS ----------------
-
-STATUS = {
-    "check": "🟡 На проверке",
-    "work": "🔵 В работе",
-    "done": "🟢 Выполнен"
-}
+async def init_db():
+    async with aiosqlite.connect(DB) as db:
+        await db.execute("""
+        CREATE TABLE IF NOT EXISTS orders (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            item TEXT,
+            nick TEXT,
+            status TEXT
+        )
+        """)
+        await db.commit()
 
 # ---------------- MENU ----------------
 
-def main_menu():
+def menu():
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton("🛒 Купить Robux", callback_data="shop")],
-        [InlineKeyboardButton("📦 Мои покупки", callback_data="orders")],
-        [InlineKeyboardButton("💰 Баланс", callback_data="balance")],
-        [InlineKeyboardButton("ℹ️ Информация", callback_data="info")]
+        [InlineKeyboardButton(text="🛒 Купить", callback_data="shop")],
+        [InlineKeyboardButton(text="📦 Мои покупки", callback_data="orders")],
+        [InlineKeyboardButton(text="💰 Баланс", callback_data="balance")],
+        [InlineKeyboardButton(text="ℹ️ Инфо", callback_data="info")]
     ])
+
+back = InlineKeyboardMarkup(inline_keyboard=[
+    [InlineKeyboardButton(text="⬅️ Назад", callback_data="back")]
+])
 
 # ---------------- START ----------------
 
 @dp.message(F.text == "/start")
-async def start(message: types.Message):
-    await message.answer("🏖️ FogBuy Shop\nДобро пожаловать 💚", reply_markup=main_menu())
+async def start(m: types.Message):
+    await m.answer("🏪 FogBuy PRO\nДобро пожаловать 💚", reply_markup=menu())
 
 # ---------------- SHOP ----------------
 
 @dp.callback_query(F.data == "shop")
-async def shop(call: types.CallbackQuery):
+async def shop(c: types.CallbackQuery):
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton("40 - 79₽", callback_data="buy_40"),
-         InlineKeyboardButton("80 - 109₽", callback_data="buy_80")],
-
-        [InlineKeyboardButton("200+40 - 249₽", callback_data="buy_200"),
-         InlineKeyboardButton("400+100 - 359₽", callback_data="buy_400")],
-
-        [InlineKeyboardButton("800 - 599₽", callback_data="buy_800"),
-         InlineKeyboardButton("1000 - 659₽", callback_data="buy_1000")],
-
-        [InlineKeyboardButton("1200+40 - 899₽", callback_data="buy_1200"),
-         InlineKeyboardButton("1700 - 1199₽", callback_data="buy_1700")],
-
-        [InlineKeyboardButton("2000 - 1319₽", callback_data="buy_2000"),
-         InlineKeyboardButton("2500 - 1679₽", callback_data="buy_2500")],
-
-        [InlineKeyboardButton("4500 - 3019₽", callback_data="buy_4500"),
-         InlineKeyboardButton("10000 - 6379₽", callback_data="buy_10000")],
-
-        [InlineKeyboardButton("22500 - 14750₽", callback_data="buy_22500")],
-
+        [InlineKeyboardButton("40", callback_data="buy_40"),
+         InlineKeyboardButton("80", callback_data="buy_80")],
+        [InlineKeyboardButton("200", callback_data="buy_200"),
+         InlineKeyboardButton("400", callback_data="buy_400")],
+        [InlineKeyboardButton("800", callback_data="buy_800"),
+         InlineKeyboardButton("1000", callback_data="buy_1000")],
+        [InlineKeyboardButton("1700", callback_data="buy_1700"),
+         InlineKeyboardButton("2500", callback_data="buy_2500")],
+        [InlineKeyboardButton("4500", callback_data="buy_4500"),
+         InlineKeyboardButton("10000", callback_data="buy_10000")],
+        [InlineKeyboardButton("22500", callback_data="buy_22500")],
         [InlineKeyboardButton("⬅️ Назад", callback_data="back")]
     ])
 
-    await call.message.edit_text("🛒 Выберите пакет:", reply_markup=kb)
+    await c.message.edit_text("🛒 Выбор товара", reply_markup=kb)
 
-# ---------------- BUY ----------------
+# ---------------- STEP SYSTEM ----------------
+
+temp = {}
 
 @dp.callback_query(F.data.startswith("buy_"))
-async def buy(call: types.CallbackQuery):
-    temp[call.from_user.id] = call.data.replace("buy_", "")
-    await call.message.edit_text("👤 Введите ваш НИК (точный!)")
+async def buy(c: types.CallbackQuery):
+    temp[c.from_user.id] = c.data.replace("buy_", "")
+    await c.message.edit_text("👤 Введи ник (точный)")
 
-# ---------------- GET NICK ----------------
+# ---------------- CREATE ORDER ----------------
 
 @dp.message()
-async def get_nick(message: types.Message):
-    global order_id
-
-    if message.from_user.id not in temp:
+async def nick(m: types.Message):
+    if m.from_user.id not in temp:
         return
 
-    item = temp[message.from_user.id]
-    nick = message.text
+    item = temp[m.from_user.id]
+    nick = m.text
 
-    orders[order_id] = {
-        "user": message.from_user.id,
-        "item": item,
-        "nick": nick,
-        "status": STATUS["check"]
-    }
-
-    # уведомление админу
-    for admin in ADMINS:
-        await bot.send_message(
-            admin,
-            f"🆕 Новый заказ #{order_id}\n"
-            f"🎮 Ник: {nick}\n"
-            f"🛒 Товар: {item}"
+    async with aiosqlite.connect(DB) as db:
+        cur = await db.execute(
+            "INSERT INTO orders (user_id,item,nick,status) VALUES (?,?,?,?)",
+            (m.from_user.id, item, nick, "🟡 Проверка")
         )
+        await db.commit()
+        order_id = cur.lastrowid
 
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton("✅ Я оплатил", callback_data=f"paid_{order_id}")]
     ])
 
-    await message.answer(
-        f"📦 Заказ #{order_id}\n\n"
-        f"🎮 Ник: {nick}\n"
-        f"🛒 Товар: {item}\n\n"
-        "💳 СБП: 2202 2068 1662 4501\n\n"
-        "После оплаты нажмите кнопку 👇",
+    await m.answer(
+        f"📦 Заказ #{order_id}\n💳 СБП: 2202206816624501\n\nПосле оплаты нажми кнопку",
         reply_markup=kb
     )
 
-    order_id += 1
-    del temp[message.from_user.id]
+    del temp[m.from_user.id]
+
+    for a in ADMINS:
+        await bot.send_message(a, f"🆕 Заказ #{order_id} ждёт проверки")
 
 # ---------------- PAID ----------------
 
 @dp.callback_query(F.data.startswith("paid_"))
-async def paid(call: types.CallbackQuery):
-    oid = int(call.data.replace("paid_", ""))
+async def paid(c: types.CallbackQuery):
+    oid = int(c.data.split("_")[1])
 
-    if oid in orders:
-        orders[oid]["status"] = STATUS["check"]
+    async with aiosqlite.connect(DB) as db:
+        await db.execute("UPDATE orders SET status=? WHERE id=?", ("🟡 Проверка", oid))
+        await db.commit()
 
-        # уведомление админу
-        for admin in ADMINS:
-            await bot.send_message(admin, f"💳 Оплата подтверждена #{oid}\n🟡 На проверке")
-
-        await call.message.edit_text(
-            f"📦 Заказ #{oid}\n🟡 Отправлен на проверку"
-        )
+    await c.message.edit_text(f"📦 #{oid} отправлен на проверку")
 
 # ---------------- ORDERS ----------------
 
 @dp.callback_query(F.data == "orders")
-async def orders_list(call: types.CallbackQuery):
-    data = [
-        f"#{i} | {o['item']} | {o['status']}"
-        for i, o in orders.items()
-        if o["user"] == call.from_user.id
-    ]
+async def orders(c: types.CallbackQuery):
+    async with aiosqlite.connect(DB) as db:
+        cur = await db.execute(
+            "SELECT id,item,status FROM orders WHERE user_id=?",
+            (c.from_user.id,)
+        )
+        rows = await cur.fetchall()
 
-    text = "\n".join(data) if data else "📦 Нет заказов"
-    await call.message.edit_text(text, reply_markup=main_menu())
+    text = "\n".join([f"#{r[0]} | {r[1]} | {r[2]}" for r in rows]) or "Пусто"
+
+    await c.message.edit_text(text, reply_markup=back)
 
 # ---------------- BALANCE ----------------
 
 @dp.callback_query(F.data == "balance")
-async def balance(call: types.CallbackQuery):
-    await call.message.edit_text(
-        "💰 Баланс: 0₽",
-        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton("⬅️ Назад", callback_data="back")]
-        ])
-    )
+async def balance(c: types.CallbackQuery):
+    await c.message.edit_text("💰 Баланс: 0₽", reply_markup=back)
 
 # ---------------- INFO ----------------
 
 @dp.callback_query(F.data == "info")
-async def info(call: types.CallbackQuery):
-    await call.message.edit_text(
-        "ℹ️ FogBuy Shop\n🔥 Лучшие цены\n⚡ Быстро\n🔒 Гарантия",
-        reply_markup=main_menu()
-    )
+async def info(c: types.CallbackQuery):
+    await c.message.edit_text("ℹ️ PRO Shop Bot\n🔥 Fast\n🔒 Safe", reply_markup=back)
 
 # ---------------- BACK ----------------
 
 @dp.callback_query(F.data == "back")
-async def back(call: types.CallbackQuery):
-    await call.message.edit_text("🏖️ FogBuy Shop", reply_markup=main_menu())
+async def back_btn(c: types.CallbackQuery):
+    await c.message.edit_text("🏪 FogBuy PRO", reply_markup=menu())
 
 # ---------------- ADMIN PANEL ----------------
 
-@dp.message(F.text == "/admin")
-async def admin_panel(message: types.Message):
-    if message.from_user.id not in ADMINS:
-        return
-
-    kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton("📦 Все заказы", callback_data="admin_orders")],
-        [InlineKeyboardButton("🟡 На проверке", callback_data="admin_check")],
-        [InlineKeyboardButton("🔵 В работе", callback_data="admin_work")],
-        [InlineKeyboardButton("🟢 Выполненные", callback_data="admin_done")]
+def admin_panel():
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton("📦 Все", callback_data="a_all")],
+        [InlineKeyboardButton("🟡 Проверка", callback_data="a_check")],
+        [InlineKeyboardButton("🔵 В работе", callback_data="a_work")],
+        [InlineKeyboardButton("🟢 Готово", callback_data="a_done")]
     ])
 
-    await message.answer("👑 Админ панель", reply_markup=kb)
+@dp.message(F.text == "/admin")
+async def admin(m: types.Message):
+    if m.from_user.id not in ADMINS:
+        return
+    await m.answer("👑 Admin Panel", reply_markup=admin_panel())
 
 # ---------------- ADMIN VIEW ----------------
 
-@dp.callback_query(F.data.startswith("admin_"))
-async def admin(call: types.CallbackQuery):
-    if call.from_user.id not in ADMINS:
+@dp.callback_query(F.data.startswith("a_"))
+async def admin_view(c: types.CallbackQuery):
+    if c.from_user.id not in ADMINS:
         return
 
-    if call.data == "admin_orders":
-        text = "\n".join([f"#{i} | {o['status']}" for i, o in orders.items()])
-    elif call.data == "admin_check":
-        text = "\n".join([f"#{i}" for i, o in orders.items() if o["status"] == STATUS["check"]])
-    elif call.data == "admin_work":
-        text = "\n".join([f"#{i}" for i, o in orders.items() if o["status"] == STATUS["work"]])
-    else:
-        text = "\n".join([f"#{i}" for i, o in orders.items() if o["status"] == STATUS["done"]])
+    async with aiosqlite.connect(DB) as db:
+        cur = await db.execute("SELECT id,item,status FROM orders")
+        rows = await cur.fetchall()
 
-    await call.message.edit_text(text or "Пусто")
+    if c.data == "a_all":
+        text = "\n".join([f"#{r[0]} | {r[1]} | {r[2]}" for r in rows])
+    else:
+        st = {
+            "a_check": "🟡 Проверка",
+            "a_work": "🔵 В работе",
+            "a_done": "🟢 Готово"
+        }[c.data]
+
+        text = "\n".join([f"#{r[0]} | {r[1]}" for r in rows if r[2] == st])
+
+    await c.message.edit_text(text or "Пусто")
 
 # ---------------- RUN ----------------
 
 async def main():
+    await init_db()
     print("BOT STARTED")
     await dp.start_polling(bot)
 
